@@ -2,327 +2,92 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Dana Video Angkatan - Real-time</title>
-    <!-- Tailwind CSS + Font Awesome -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirect - Dana Video Angkatan</title>
     <style>
-        /* Custom transition dan efek */
-        .card-hover {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .card-hover:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.15);
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .progress-bar {
-            transition: width 0.3s ease;
+
+        .loading-container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 32px;
+            box-shadow: 0 20px 35px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease;
         }
-        .modal-transition {
-            transition: opacity 0.2s ease, visibility 0.2s;
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
-        /* Sembunyikan scrollbar untuk daftar nama (opsional) */
-        .nama-list {
-            max-height: 200px;
-            overflow-y: auto;
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            border: 5px solid #e2e8f0;
+            border-top: 5px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
         }
-        .nama-list::-webkit-scrollbar {
-            width: 4px;
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        .nama-list::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
+
+        h2 {
+            color: #1e293b;
+            margin-bottom: 8px;
+            font-size: 1.5rem;
         }
-        .nama-list::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
+
+        p {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .progress-text {
+            margin-top: 16px;
+            font-size: 0.8rem;
+            color: #94a3b8;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-4 md:p-6 font-sans">
-
-    <div class="max-w-7xl mx-auto">
-        <!-- Judul -->
-        <div class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-800 to-purple-700">📹 Dana Video Angkatan</h1>
-            <p class="text-gray-600 mt-1">Target total: Rp10.875.000 (145 siswa × Rp75.000)</p>
-        </div>
-
-        <!-- ========== KARTU TOTAL KESELURUHAN ========== -->
-        <div class="bg-white rounded-2xl shadow-xl p-5 md:p-6 mb-8 border border-blue-100">
-            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-chart-line text-blue-600"></i> Progress Keseluruhan</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div class="bg-blue-50 rounded-xl p-4 text-center">
-                    <p class="text-gray-500 text-sm">Total Siswa Bayar</p>
-                    <p class="text-3xl font-black text-blue-700" id="totalSiswaBayar">0</p>
-                    <p class="text-xs text-gray-500">dari 145 siswa</p>
-                </div>
-                <div class="bg-green-50 rounded-xl p-4 text-center">
-                    <p class="text-gray-500 text-sm">Total Dana Terkumpul</p>
-                    <p class="text-2xl font-black text-green-700" id="totalDana">Rp0</p>
-                </div>
-                <div class="bg-purple-50 rounded-xl p-4 text-center">
-                    <p class="text-gray-500 text-sm">Persentase Total</p>
-                    <p class="text-3xl font-black text-purple-700" id="totalPersen">0%</p>
-                </div>
-            </div>
-            <div class="mt-4">
-                <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                    <div id="totalProgressBar" class="bg-gradient-to-r from-blue-500 to-indigo-600 h-4 rounded-full progress-bar" style="width:0%"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========== KARTU PER KELAS ========== -->
-        <div id="kelasContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Dinamis oleh JavaScript -->
-        </div>
-    </div>
-
-    <!-- MODAL TAMBAH NAMA -->
-    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-transition hidden">
-        <div class="bg-white rounded-2xl w-full max-w-md mx-4 p-6 shadow-2xl transform transition-all">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-user-plus text-blue-500 mr-2"></i>Tambah yang Bayar</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <p class="text-gray-600 mb-2">Kelas: <strong id="modalKelas"></strong></p>
-            <input type="text" id="namaSiswa" placeholder="Nama lengkap siswa" class="w-full border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
-            <div class="flex gap-3 mt-6">
-                <button onclick="tambahBayar()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl transition"><i class="fas fa-save mr-1"></i> Simpan</button>
-                <button onclick="closeModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-xl transition">Batal</button>
-            </div>
+<body>
+    <div class="loading-container">
+        <div class="spinner"></div>
+        <h2>📹 Dana Video Angkatan</h2>
+        <p>Mempersiapkan halaman login...</p>
+        <div class="progress-text">
+            <i class="dots">● ● ●</i>
         </div>
     </div>
 
     <script>
-        // ----------------------------- KONFIGURASI FIREBASE -----------------------------
-        // 🔥 GANTI DENGAN KONFIGURASI FIREBASE MILIK ANDA! 🔥
-        const firebaseConfig = {
-    apiKey: "AIzaSyC43Z6DCbVH3dTDnW7jrMPJVv0HkgYZJDQ",
-    authDomain: "dana-video-angkatan.firebaseapp.com",
-    databaseURL: "https://dana-video-angkatan-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "dana-video-angkatan",
-    storageBucket: "dana-video-angkatan.firebasestorage.app",
-    messagingSenderId: "986633239021",
-    appId: "1:986633239021:web:c3b2edcfa7ff0ebbc9cfe4",
-    measurementId: "G-QSZ0QZBJ8V"
-};
-
-        // Inisialisasi Firebase
-        let app, database;
-        try {
-            app = firebase.initializeApp(firebaseConfig);
-            database = firebase.database();
-            console.log("Firebase connected");
-        } catch (err) {
-            console.error("Firebase init error:", err);
-            // Fallback jika config belum benar, tampilkan pesan
-            document.getElementById("kelasContainer").innerHTML = `<div class="col-span-full bg-red-100 p-4 rounded-xl text-red-700 text-center">
-                <i class="fas fa-exclamation-triangle"></i> Konfigurasi Firebase belum benar. Silakan ganti firebaseConfig dengan milik Anda (lihat panduan).
-            </div>`;
-        }
-
-        // Data kelas
-        const kelasData = {
-            "9A": { totalAnak: 30, siswa: {} },
-            "9B": { totalAnak: 28, siswa: {} },
-            "9C": { totalAnak: 29, siswa: {} },
-            "9D": { totalAnak: 29, siswa: {} },
-            "9E": { totalAnak: 29, siswa: {} }
-        };
-
-        // Variabel global untuk modal
-        let activeKelas = "";
-
-        // Fungsi untuk mendapatkan referensi path siswa di Realtime Database
-        function getSiswaRef(kelas) {
-            return database.ref(`kelas/${kelas}/siswa`);
-        }
-
-        // Load data awal dari Firebase dan pantau perubahan realtime
-        function loadRealtimeData() {
-            for (let kelas in kelasData) {
-                const siswaRef = getSiswaRef(kelas);
-                siswaRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data && typeof data === 'object') {
-                        kelasData[kelas].siswa = data;
-                    } else {
-                        kelasData[kelas].siswa = {};
-                    }
-                    // Setiap ada perubahan, render ulang semua tampilan
-                    renderAll();
-                });
-            }
-        }
-
-        // Hitung jumlah siswa bayar di suatu kelas
-        function getJumlahBayar(kelas) {
-            return Object.keys(kelasData[kelas].siswa).length;
-        }
-
-        // Hitung total seluruh siswa bayar
-        function getTotalSiswaBayar() {
-            let total = 0;
-            for (let k in kelasData) {
-                total += getJumlahBayar(k);
-            }
-            return total;
-        }
-
-        // Hapus nama siswa (dengan konfirmasi)
-        async function hapusSiswa(kelas, nama) {
-            if (confirm(`Hapus "${nama}" dari kelas ${kelas}?`)) {
-                await getSiswaRef(kelas).child(nama).remove();
-            }
-        }
-
-        // Tambah data siswa (dipanggil dari modal)
-        async function tambahBayar() {
-            const nama = document.getElementById("namaSiswa").value.trim();
-            if (nama === "") {
-                alert("Nama tidak boleh kosong!");
-                return;
-            }
-            const kelas = activeKelas;
-            // Cek apakah nama sudah ada di kelas ini (opsional, hindari duplikat)
-            const siswaRef = getSiswaRef(kelas);
-            const snapshot = await siswaRef.child(nama).get();
-            if (snapshot.exists()) {
-                alert(`Nama "${nama}" sudah tercatat di kelas ${kelas}. Tidak boleh duplikat.`);
-                return;
-            }
-            // Simpan dengan key = nama (nilai true sebagai penanda)
-            await siswaRef.child(nama).set(true);
-            // Kosongkan input dan tutup modal
-            document.getElementById("namaSiswa").value = "";
-            closeModal();
-        }
-
-        function openModal(kelas) {
-            activeKelas = kelas;
-            document.getElementById("modalKelas").innerText = kelas;
-            document.getElementById("modal").classList.remove("hidden");
-            document.getElementById("namaSiswa").focus();
-        }
-
-        function closeModal() {
-            document.getElementById("modal").classList.add("hidden");
-            document.getElementById("namaSiswa").value = "";
-        }
-
-        // Render seluruh UI (kartu kelas, total, dll)
-        function renderAll() {
-            renderTotal();
-            renderKelasCards();
-        }
-
-        function renderTotal() {
-            const totalSiswa = getTotalSiswaBayar();
-            const totalDana = totalSiswa * 75000;
-            const persenTotal = (totalSiswa / 145) * 100;
-
-            document.getElementById("totalSiswaBayar").innerText = totalSiswa;
-            document.getElementById("totalDana").innerText = "Rp" + totalDana.toLocaleString('id-ID');
-            document.getElementById("totalPersen").innerText = persenTotal.toFixed(1) + "%";
-            document.getElementById("totalProgressBar").style.width = persenTotal + "%";
-        }
-
-        function renderKelasCards() {
-            const container = document.getElementById("kelasContainer");
-            if (!container) return;
-            let html = "";
-            for (let [kelas, info] of Object.entries(kelasData)) {
-                const totalAnakKelas = info.totalAnak;
-                const jumlahBayar = getJumlahBayar(kelas);
-                const uangTerkumpul = jumlahBayar * 75000;
-                const persenKelas = (jumlahBayar / totalAnakKelas) * 100;
-                const listNama = Object.keys(info.siswa).sort();
-
-                html += `
-                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 card-hover">
-                        <div class="bg-gradient-to-r from-indigo-600 to-blue-600 px-5 py-3 flex justify-between items-center">
-                            <h3 class="text-white font-bold text-xl">Kelas ${kelas}</h3>
-                            <span class="bg-white bg-opacity-30 text-white text-sm px-3 py-1 rounded-full">${jumlahBayar}/${totalAnakKelas} siswa</span>
-                        </div>
-                        <div class="p-5">
-                            <!-- Ringkasan -->
-                            <div class="grid grid-cols-2 gap-3 mb-4">
-                                <div class="bg-gray-50 rounded-xl p-2 text-center">
-                                    <p class="text-gray-500 text-xs">Sudah bayar</p>
-                                    <p class="text-xl font-bold text-indigo-700">${jumlahBayar} org</p>
-                                </div>
-                                <div class="bg-gray-50 rounded-xl p-2 text-center">
-                                    <p class="text-gray-500 text-xs">Terkumpul</p>
-                                    <p class="text-sm font-bold text-green-600">Rp${uangTerkumpul.toLocaleString('id-ID')}</p>
-                                </div>
-                            </div>
-                            <!-- Progress bar kelas -->
-                            <div class="mb-4">
-                                <div class="flex justify-between text-xs text-gray-600 mb-1">
-                                    <span>Persentase</span>
-                                    <span>${persenKelas.toFixed(1)}%</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-indigo-500 h-2 rounded-full progress-bar" style="width: ${persenKelas}%"></div>
-                                </div>
-                            </div>
-                            <!-- Daftar nama yang sudah bayar -->
-                            <div class="mb-3">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-sm font-semibold text-gray-700"><i class="fas fa-users mr-1"></i> Daftar pembayar</span>
-                                    <span class="text-xs text-gray-400">${listNama.length} nama</span>
-                                </div>
-                                <div class="nama-list bg-gray-50 rounded-xl p-2">
-                                    ${listNama.length === 0 ? '<p class="text-xs text-gray-400 text-center py-2">Belum ada yang bayar</p>' : 
-                                        listNama.map(nama => `
-                                            <div class="flex justify-between items-center border-b border-gray-200 py-1.5 px-1 last:border-0">
-                                                <span class="text-sm text-gray-700 truncate max-w-[150px]">${escapeHtml(nama)}</span>
-                                                <button onclick="hapusSiswa('${kelas}', '${escapeHtml(nama)}')" class="text-red-400 hover:text-red-600 transition" title="Hapus">
-                                                    <i class="fas fa-trash-alt text-xs"></i>
-                                                </button>
-                                            </div>
-                                        `).join('')
-                                    }
-                                </div>
-                            </div>
-                            <!-- Tombol tambah -->
-                            <button onclick="openModal('${kelas}')" class="w-full mt-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold py-2 rounded-xl transition flex items-center justify-center gap-2 border border-blue-200">
-                                <i class="fas fa-plus-circle"></i> Tambah yang bayar
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-            container.innerHTML = html;
-        }
-
-        // Helper untuk mencegah XSS
-        function escapeHtml(str) {
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        // Inisialisasi: jika database terdefinisi, load data realtime
-        if (database) {
-            loadRealtimeData();
-        } else {
-            // Untuk keperluan demo (tanpa Firebase) tampilkan data dummy? 
-            // Tapi lebih baik kasih pesan error tetap render tanpa data realtime
-            console.warn("Tidak konek Firebase, tampilan statis tidak akan berfungsi penuh");
-            document.getElementById("kelasContainer").innerHTML = `<div class="col-span-full bg-yellow-100 p-4 rounded-xl text-yellow-800 text-center">
-                <i class="fas fa-database"></i> Firebase belum dikonfigurasi. Ikuti panduan untuk menghubungkan database real-time.
-            </div>`;
-        }
+        // Tampilkan loading screen minimal 1 detik, lalu redirect ke login.html
+        setTimeout(() => {
+            window.location.href = "login.html";
+        }, 1200); // 1.2 detik, cukup untuk melihat animasi
     </script>
 </body>
 </html>
