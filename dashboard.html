@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Dashboard - Dana Video Angkatan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <style>
+        .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -12px rgba(0,0,0,0.15); }
+        .progress-bar { transition: width 0.3s ease; }
+        .nama-list { max-height: 200px; overflow-y: auto; }
+        .nama-list::-webkit-scrollbar { width: 4px; }
+        .nama-list::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .nama-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-4 md:p-6 font-sans">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-end mb-4">
+            <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm shadow">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-800 to-purple-700">📹 Dana Video Angkatan</h1>
+            <p class="text-gray-600 mt-1">Target total: Rp10.875.000 (145 siswa × Rp75.000)</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-xl p-5 md:p-6 mb-8 border border-blue-100">
+            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-chart-line text-blue-600"></i> Progress Keseluruhan</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div class="bg-blue-50 rounded-xl p-4 text-center">
+                    <p class="text-gray-500 text-sm">Total Siswa Bayar</p>
+                    <p class="text-3xl font-black text-blue-700" id="totalSiswaBayar">0</p>
+                    <p class="text-xs text-gray-500">dari 145 siswa</p>
+                </div>
+                <div class="bg-green-50 rounded-xl p-4 text-center">
+                    <p class="text-gray-500 text-sm">Total Dana Terkumpul</p>
+                    <p class="text-2xl font-black text-green-700" id="totalDana">Rp0</p>
+                </div>
+                <div class="bg-purple-50 rounded-xl p-4 text-center">
+                    <p class="text-gray-500 text-sm">Persentase Total</p>
+                    <p class="text-3xl font-black text-purple-700" id="totalPersen">0%</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                    <div id="totalProgressBar" class="bg-gradient-to-r from-blue-500 to-indigo-600 h-4 rounded-full progress-bar" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+        <div id="kelasContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-md mx-4 p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-user-plus text-blue-500 mr-2"></i>Tambah yang Bayar</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <p class="text-gray-600 mb-2">Kelas: <strong id="modalKelas"></strong></p>
+            <input type="text" id="namaSiswa" placeholder="Nama lengkap siswa" class="w-full border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <div class="flex gap-3 mt-6">
+                <button onclick="tambahBayar()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl transition">Simpan</button>
+                <button onclick="closeModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-xl transition">Batal</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        if (localStorage.getItem("isLoggedIn") !== "true") {
+            window.location.href = "login.html";
+        }
+        const firebaseConfig = {
+            apiKey: "AIzaSyC43Z6DCbVH3dTDnW7jrMPJVv0HkgYZJDQ",
+            authDomain: "dana-video-angkatan.firebaseapp.com",
+            databaseURL: "https://dana-video-angkatan-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "dana-video-angkatan",
+            storageBucket: "dana-video-angkatan.firebasestorage.app",
+            messagingSenderId: "986633239021",
+            appId: "1:986633239021:web:c3b2edcfa7ff0ebbc9cfe4",
+            measurementId: "G-QSZ0QZBJ8V"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const kelasData = {
+            "9A": { totalAnak: 30, siswa: {} },
+            "9B": { totalAnak: 28, siswa: {} },
+            "9C": { totalAnak: 29, siswa: {} },
+            "9D": { totalAnak: 29, siswa: {} },
+            "9E": { totalAnak: 29, siswa: {} }
+        };
+        let activeKelas = "";
+        function getSiswaRef(kelas) { return database.ref(`kelas/${kelas}/siswa`); }
+        function loadRealtimeData() {
+            for (let kelas in kelasData) {
+                getSiswaRef(kelas).on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    kelasData[kelas].siswa = (data && typeof data === 'object') ? data : {};
+                    renderAll();
+                });
+            }
+        }
+        function getJumlahBayar(kelas) { return Object.keys(kelasData[kelas].siswa).length; }
+        function getTotalSiswaBayar() { let total = 0; for (let k in kelasData) total += getJumlahBayar(k); return total; }
+        async function hapusSiswa(kelas, nama) {
+            if (confirm(`Hapus "${nama}" dari kelas ${kelas}?`)) {
+                await getSiswaRef(kelas).child(nama).remove();
+            }
+        }
+        async function tambahBayar() {
+            const nama = document.getElementById("namaSiswa").value.trim();
+            if (!nama) return alert("Nama tidak boleh kosong!");
+            const snapshot = await getSiswaRef(activeKelas).child(nama).get();
+            if (snapshot.exists()) return alert(`"${nama}" sudah tercatat.`);
+            await getSiswaRef(activeKelas).child(nama).set(true);
+            document.getElementById("namaSiswa").value = "";
+            closeModal();
+        }
+        function openModal(kelas) { activeKelas = kelas; document.getElementById("modalKelas").innerText = kelas; document.getElementById("modal").classList.remove("hidden"); document.getElementById("namaSiswa").focus(); }
+        function closeModal() { document.getElementById("modal").classList.add("hidden"); }
+        function renderAll() { renderTotal(); renderKelasCards(); }
+        function renderTotal() {
+            const totalSiswa = getTotalSiswaBayar();
+            const totalDana = totalSiswa * 75000;
+            const persenTotal = (totalSiswa / 145) * 100;
+            document.getElementById("totalSiswaBayar").innerText = totalSiswa;
+            document.getElementById("totalDana").innerText = "Rp" + totalDana.toLocaleString('id-ID');
+            document.getElementById("totalPersen").innerText = persenTotal.toFixed(1) + "%";
+            document.getElementById("totalProgressBar").style.width = persenTotal + "%";
+        }
+        function escapeHtml(str) { return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
+        function renderKelasCards() {
+            const container = document.getElementById("kelasContainer");
+            if (!container) return;
+            let html = "";
+            for (let [kelas, info] of Object.entries(kelasData)) {
+                const totalAnak = info.totalAnak;
+                const jumlahBayar = getJumlahBayar(kelas);
+                const uangTerkumpul = jumlahBayar * 75000;
+                const persenKelas = (jumlahBayar / totalAnak) * 100;
+                const listNama = Object.keys(info.siswa).sort();
+                html += `<div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 card-hover"><div class="bg-gradient-to-r from-indigo-600 to-blue-600 px-5 py-3 flex justify-between items-center"><h3 class="text-white font-bold text-xl">Kelas ${kelas}</h3><span class="bg-white bg-opacity-30 text-white text-sm px-3 py-1 rounded-full">${jumlahBayar}/${totalAnak}</span></div><div class="p-5"><div class="grid grid-cols-2 gap-3 mb-4"><div class="bg-gray-50 rounded-xl p-2 text-center"><p class="text-gray-500 text-xs">Sudah bayar</p><p class="text-xl font-bold text-indigo-700">${jumlahBayar} org</p></div><div class="bg-gray-50 rounded-xl p-2 text-center"><p class="text-gray-500 text-xs">Terkumpul</p><p class="text-sm font-bold text-green-600">Rp${uangTerkumpul.toLocaleString('id-ID')}</p></div></div><div class="mb-4"><div class="flex justify-between text-xs text-gray-600 mb-1"><span>Persentase</span><span>${persenKelas.toFixed(1)}%</span></div><div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-indigo-500 h-2 rounded-full progress-bar" style="width: ${persenKelas}%"></div></div></div><div class="mb-3"><div class="flex justify-between items-center mb-2"><span class="text-sm font-semibold text-gray-700"><i class="fas fa-users mr-1"></i> Daftar pembayar</span><span class="text-xs text-gray-400">${listNama.length} nama</span></div><div class="nama-list bg-gray-50 rounded-xl p-2">${listNama.length === 0 ? '<p class="text-xs text-gray-400 text-center py-2">Belum ada yang bayar</p>' : listNama.map(n => `<div class="flex justify-between items-center border-b border-gray-200 py-1.5 px-1 last:border-0"><span class="text-sm text-gray-700 truncate max-w-[150px]">${escapeHtml(n)}</span><button onclick="hapusSiswa('${kelas}', '${escapeHtml(n)}')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt text-xs"></i></button></div>`).join('')}</div></div><button onclick="openModal('${kelas}')" class="w-full mt-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold py-2 rounded-xl transition flex items-center justify-center gap-2 border border-blue-200"><i class="fas fa-plus-circle"></i> Tambah yang bayar</button></div></div>`;
+            }
+            container.innerHTML = html;
+        }
+        function logout() { localStorage.removeItem("isLoggedIn"); window.location.href = "login.html"; }
+        loadRealtimeData();
+    </script>
+</body>
+</html>
